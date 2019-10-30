@@ -32,29 +32,36 @@ public class GameManager : MonoBehaviour
     int decideScaleCounter, placeModelCounter;
     float scaleCounter, waitingCounter;
     bool isWating, isFirst;
+    AudioSource audioSource;
     public GameObject[] models;
     public DirectionToKeyMap[] directionMaps;
-    public Text hintText;
+    public Text hintText, levelText;
     public TMPro.TextMeshProUGUI endText;
     public GameObject pumpkin, startNode;
     public Transform selectPositionNode;
     public GameObject sortUI;
+    public AudioClip upSound, downSound, confirmSound, finishSound;
     string[] hints = {
         "上下選擇你的模型\n空白鍵確定",
-        "設定長寬高的尺寸\n空白鍵確定",
-        "方向鍵選擇要從哪插入\n空白鍵確定",
-        "方向鍵微調你要插入的位置\n空白鍵確定",
+        "依序設定長寬高的尺寸\n空白鍵確定",
+        "方向鍵選擇要從哪個方向插入\n空白鍵確定",
+        "方向鍵調整你要插入的位置\n空白鍵確定",
         "第一次空白鍵開始插入\n第二次空白鍵停止",
         "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束、R重來\n否則會持續到模型全用完為止",
     };
-
+    string rule = "插入各種模型來幫南瓜挖洞\n製作你的南瓜燈";
+    string[] levels =
+    {
+        "選擇模型","設定尺寸","選擇插入方向","調整位置","插入階段"
+    };
     // Start is called before the first frame update
     void Start()
     {
         isFirst = true;
         endText.enabled = false;
+        audioSource = GetComponent<AudioSource>();
         init();
-        showHint();
+  
     }
 
     // Update is called once per frame
@@ -83,7 +90,8 @@ public class GameManager : MonoBehaviour
         waitingCounter = 0.0f;
         isWating = false;
         selectObjectRotation = Vector3.zero;
-        if(models.Length == 1)
+        showHint();
+        if (models.Length == 1)
         {
             confirmSelect();
         }
@@ -122,17 +130,20 @@ public class GameManager : MonoBehaviour
             sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Stop();
             selectModelIndex = (selectModelIndex - 1 < 0) ? models.Length - 1 : selectModelIndex - 1;
             sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Play("scale");
+            audioSource.PlayOneShot(upSound);
         }
         else if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Stop();
             selectModelIndex = (selectModelIndex + 1 == models.Length) ? 0 : selectModelIndex + 1;
-            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Play();
+            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Play("scale");
+            audioSource.PlayOneShot(downSound);
         }
         else if (Input.GetKeyDown(CONFIRM_KEY))
         {
             confirmSelect();
-           
+            audioSource.PlayOneShot(confirmSound);
+
         }
         //Debug.Log("selectModelIndex" + selectModelIndex);
     }
@@ -162,7 +173,8 @@ public class GameManager : MonoBehaviour
         {
             scaleCounter = START_SCALE;
             decideScaleCounter++;
-            if(decideScaleCounter == 3)
+            audioSource.PlayOneShot(confirmSound);
+            if (decideScaleCounter == 3)
             {
                 gameState = GameState.DECIDE_DIRCTION;
                 showHint();
@@ -176,6 +188,7 @@ public class GameManager : MonoBehaviour
         {
             if (Input.GetKeyDown(CONFIRM_KEY))
             {
+                audioSource.PlayOneShot(confirmSound);
                 if (selectDirectionKey == KeyCode.Escape)
                 {
                     setSelectObjectTransform(KeyCode.UpArrow, getDirectionTranform(KeyCode.UpArrow));
@@ -185,7 +198,7 @@ public class GameManager : MonoBehaviour
             }
             else if (Input.GetKeyDown(item.key))
             {
-
+                audioSource.PlayOneShot(upSound);
                 setSelectObjectTransform(item.key, item.trans);
             }
         }
@@ -245,6 +258,7 @@ public class GameManager : MonoBehaviour
         }
         if (Input.GetKeyDown(CONFIRM_KEY))
         {
+            audioSource.PlayOneShot(confirmSound);
             gameState = GameState.PLACE_MODEL;
             showHint();
             Color materialColor = selectObject.transform.GetChild(0).GetComponent<MeshRenderer>().materials[0].GetColor("_Color");
@@ -257,6 +271,7 @@ public class GameManager : MonoBehaviour
         {
             if (Input.GetKeyDown(CONFIRM_KEY))
             {
+                audioSource.PlayOneShot(confirmSound);
                 placeModelCounter++;
             }
             if (placeModelCounter == 1)
@@ -312,6 +327,7 @@ public class GameManager : MonoBehaviour
     }
     void onGameFinish()
     {
+        audioSource.PlayOneShot(finishSound);
         foreach (var item in directionMaps)
         {
             int count = item.trans.childCount;
@@ -321,19 +337,22 @@ public class GameManager : MonoBehaviour
             }
         }
         sortUI.SetActive(false);
+        levelText.enabled = false;
+        startNode.SetActive(false);
+        hintText.enabled = false;
         endText.enabled = true;
         gameState = GameState.FINISH;
     }
 
     void gameFinish()
     {
-        //TODO 粒子特效 或文字有特效
+        //TODO 粒子特效 喬巴噴泉
         pumpkin.transform.eulerAngles = new Vector3(
             pumpkin.transform.eulerAngles.x,
             pumpkin.transform.eulerAngles.y,
             pumpkin.transform.eulerAngles.z + Time.deltaTime * PUMPKIN_MOVE_SPEED
         );
-        Debug.Log("game finish");
+
     }
     void resizeArray()
     {
@@ -357,29 +376,33 @@ public class GameManager : MonoBehaviour
     }
     void showHint()
     {
-        if (isFirst)
+        
+        switch (gameState)
         {
-            switch (gameState)
-            {
-                case GameState.SELECT_MODEL:
-                    hintText.text = hints[0];
-                    break;
-                case GameState.DECIDE_SCALE:
-                    hintText.text = hints[1];
-                    break;
-                case GameState.DECIDE_DIRCTION:
-                    hintText.text = hints[2];
-                    break;
-                case GameState.DECIDE_POSITION:
-                    hintText.text = hints[3];
-                    break;
-                case GameState.PLACE_MODEL:
-                    hintText.text = hints[4];
-                    break;
-                default:
-                    break;
-            }
-            hintText.GetComponent<Animator>().SetTrigger("Show");
+            case GameState.SELECT_MODEL:
+                hintText.text = hints[0];
+                levelText.text = levels[0];
+                break;
+            case GameState.DECIDE_SCALE:
+                hintText.text = hints[1];
+                levelText.text = levels[1];
+                break;
+            case GameState.DECIDE_DIRCTION:
+                hintText.text = hints[2];
+                levelText.text = levels[2];
+                break;
+            case GameState.DECIDE_POSITION:
+                hintText.text = hints[3];
+                levelText.text = levels[3];
+                break;
+            case GameState.PLACE_MODEL:
+                hintText.text = hints[4];
+                levelText.text = levels[4];
+                break;
+            default:
+                break;
         }
+        if(isFirst) hintText.GetComponent<Animator>().SetTrigger("Show");
+        
     }
 }
