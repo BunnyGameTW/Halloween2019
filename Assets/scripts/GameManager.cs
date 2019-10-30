@@ -40,28 +40,49 @@ public class GameManager : MonoBehaviour
     public GameObject pumpkin, startNode;
     public Transform selectPositionNode;
     public GameObject sortUI;
+    public GameObject[] cubeModels;
+    public Transform [] cameraTrans;
+    public Transform mainCameraTrans;
+    public Transform[] pumpkinTrans;
     public AudioClip upSound, downSound, confirmSound, finishSound;
     string[] hints = {
         "上下選擇你的模型\n空白鍵確定",
-        "依序設定長寬高的尺寸\n空白鍵確定",
+        "依序設定長寬高的尺寸\n空白鍵確定\n方向鍵切換鏡頭方向",
         "方向鍵選擇要從哪個方向插入\n空白鍵確定",
         "方向鍵調整你要插入的位置\n空白鍵確定",
-        "第一次空白鍵開始插入\n第二次空白鍵停止",
-        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束、R重來\n否則會持續到模型全用完為止",
+        "第一次空白鍵開始插入\n第二次空白鍵停止\n方向鍵切換鏡頭方向",
+        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束、R重來、B回首頁\n否則會持續到模型全用完為止",
+        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束、R重來、B回首頁"
     };
-    string rule = "插入各種模型來幫南瓜挖洞\n製作你的南瓜燈";
+    string rule = "插入各種模型來幫南瓜挖洞\n製作你的南瓜燈";//TODO
     string[] levels =
     {
         "選擇模型","設定尺寸","選擇插入方向","調整位置","插入階段"
     };
+    public static bool isCubeMode = true;
     // Start is called before the first frame update
     void Start()
     {
         isFirst = true;
         endText.enabled = false;
         audioSource = GetComponent<AudioSource>();
+        if (isCubeMode)
+        {
+            for (int i = 0; i < models.Length; i++)
+            {
+                models[i].SetActive(false);
+                models[i] = cubeModels[i];
+
+            }
+        }
+        else
+        {
+            for (int i = 0; i < models.Length; i++)
+            {
+                cubeModels[i].SetActive(false);
+            }
+        }
         init();
-  
     }
 
     // Update is called once per frame
@@ -75,7 +96,11 @@ public class GameManager : MonoBehaviour
         else if (Input.GetKeyDown(KeyCode.R))
         {
             UnityEngine.SceneManagement.SceneManager.LoadScene("gameScene");
-        } 
+        }
+        else if (Input.GetKeyDown(KeyCode.B))
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene("startScene");
+        }
     }
 
     void init()
@@ -149,11 +174,22 @@ public class GameManager : MonoBehaviour
     }
     void confirmSelect()
     {
-        selectObject = models[selectModelIndex];
-        selectObject.transform.position = selectPositionNode.position;
+        if (isCubeMode)
+        {
+            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Stop();
+            selectObject = Instantiate(models[selectModelIndex], startNode.transform);
+            selectObject.transform.position = selectPositionNode.position;
+
+        }
+        else
+        {
+            selectObject = models[selectModelIndex];
+            selectObject.transform.position = selectPositionNode.position;
+        }
         gameState = GameState.DECIDE_SCALE;
+        setCamera(cameraTrans[2]);
         showHint();
-        Destroy(sortUI.transform.GetChild(selectModelIndex).gameObject);
+        if(!isCubeMode) Destroy(sortUI.transform.GetChild(selectModelIndex).gameObject);
     }
     void decideScale()
     {
@@ -176,10 +212,31 @@ public class GameManager : MonoBehaviour
             audioSource.PlayOneShot(confirmSound);
             if (decideScaleCounter == 3)
             {
+                setCamera(mainCameraTrans);
                 gameState = GameState.DECIDE_DIRCTION;
                 showHint();
                 selectObjectRotation = selectObject.transform.eulerAngles;
+                if (selectDirectionKey == KeyCode.Escape)
+                {
+                    setSelectObjectTransform(KeyCode.UpArrow, getDirectionTranform(KeyCode.UpArrow));
+                }
             }
+        }
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            setCamera(cameraTrans[1]);
+        }
+        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            setCamera(cameraTrans[0]);
+        }
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            setCamera(cameraTrans[3]);
+        }
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            setCamera(cameraTrans[2]); 
         }
     }
     void decideDirection()
@@ -189,10 +246,6 @@ public class GameManager : MonoBehaviour
             if (Input.GetKeyDown(CONFIRM_KEY))
             {
                 audioSource.PlayOneShot(confirmSound);
-                if (selectDirectionKey == KeyCode.Escape)
-                {
-                    setSelectObjectTransform(KeyCode.UpArrow, getDirectionTranform(KeyCode.UpArrow));
-                }
                 gameState = GameState.DECIDE_POSITION;
                 showHint();
             }
@@ -274,6 +327,22 @@ public class GameManager : MonoBehaviour
                 audioSource.PlayOneShot(confirmSound);
                 placeModelCounter++;
             }
+            else if (Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                setCamera(pumpkinTrans[1]);
+            }
+            else if (Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                setCamera(pumpkinTrans[2]);
+            }
+            else if (Input.GetKeyDown(KeyCode.UpArrow))
+            {
+                setCamera(mainCameraTrans);
+            }
+            else if (Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                setCamera(pumpkinTrans[0]);
+            }
             if (placeModelCounter == 1)
             {
                 Vector3 direction = Vector3.zero;
@@ -302,7 +371,7 @@ public class GameManager : MonoBehaviour
                 isWating = true;
                 if (isFirst)
                 {
-                    hintText.text = hints[5];
+                    hintText.text = isCubeMode ? hints[5] : hints[6];
                     hintText.GetComponent<Animator>().SetTrigger("Show");
                 }
             }
@@ -310,8 +379,8 @@ public class GameManager : MonoBehaviour
         else {
             waitingCounter += Time.deltaTime;
             if (waitingCounter >= WAITING_TIME)
-            {  
-                resizeArray();
+            {
+                if (!isCubeMode) resizeArray();
                 if (models.Length == 0)
                 {
                     onGameFinish();
@@ -319,7 +388,7 @@ public class GameManager : MonoBehaviour
                 else
                 {
                     isFirst = false;
-                    Debug.Log("繼續");
+                    setCamera(mainCameraTrans);
                     init(); 
                 }
             }
@@ -336,6 +405,7 @@ public class GameManager : MonoBehaviour
                 item.trans.GetChild(0).SetParent(pumpkin.transform);
             }
         }
+        setCamera(mainCameraTrans);
         sortUI.SetActive(false);
         levelText.enabled = false;
         startNode.SetActive(false);
@@ -404,5 +474,10 @@ public class GameManager : MonoBehaviour
         }
         if(isFirst) hintText.GetComponent<Animator>().SetTrigger("Show");
         
+    }
+    void setCamera(Transform trans)
+    {
+        Camera.main.transform.position = trans.position;
+        Camera.main.transform.eulerAngles = trans.localEulerAngles;
     }
 }
