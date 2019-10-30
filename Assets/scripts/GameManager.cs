@@ -22,7 +22,7 @@ public class GameManager : MonoBehaviour
     float SCALE_LIMIT = 3.0f;
     float MOVE_SPEED = 1.0f;
     float PUMPKIN_MOVE_SPEED = 5.0f;
-    float WAITING_TIME = 2.0f;
+    float WAITING_TIME = 1.0f;
     float START_SCALE = 1.0f;
     KeyCode CONFIRM_KEY = KeyCode.Space;
     GameObject selectObject;
@@ -37,8 +37,10 @@ public class GameManager : MonoBehaviour
     public Text hintText;
     public TMPro.TextMeshProUGUI endText;
     public GameObject pumpkin, startNode;
+    public Transform selectPositionNode;
+    public GameObject sortUI;
     string[] hints = {
-        "左右選擇你的模型\n空白鍵確定",
+        "上下選擇你的模型\n空白鍵確定",
         "設定長寬高的尺寸\n空白鍵確定",
         "方向鍵選擇要從哪插入\n空白鍵確定",
         "方向鍵微調你要插入的位置\n空白鍵確定",
@@ -74,12 +76,17 @@ public class GameManager : MonoBehaviour
         gameState = GameState.SELECT_MODEL;
         selectDirectionKey = KeyCode.Escape;
         selectModelIndex = 0;
+        sortUI.transform.GetChild(0).GetComponent<Animation>().Play();
         decideScaleCounter = 0;
         placeModelCounter = 0;
         scaleCounter = START_SCALE;
         waitingCounter = 0.0f;
         isWating = false;
         selectObjectRotation = Vector3.zero;
+        if(models.Length == 1)
+        {
+            confirmSelect();
+        }
     }
 
     void playerControl()
@@ -110,27 +117,33 @@ public class GameManager : MonoBehaviour
     void selectModel()
     {
 
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        if (Input.GetKeyDown(KeyCode.UpArrow))
         {
-            //TODO FIRST UI呈現 畫面更換模型
+            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Stop();
             selectModelIndex = (selectModelIndex - 1 < 0) ? models.Length - 1 : selectModelIndex - 1;
-
+            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Play("scale");
         }
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
         {
+            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Stop();
             selectModelIndex = (selectModelIndex + 1 == models.Length) ? 0 : selectModelIndex + 1;
+            sortUI.transform.GetChild(selectModelIndex).GetComponent<Animation>().Play();
         }
         else if (Input.GetKeyDown(CONFIRM_KEY))
         {
-            
-            selectObject = models[selectModelIndex];
-            selectObject.transform.localPosition = Vector3.zero;
-            gameState = GameState.DECIDE_SCALE;
-            showHint();
+            confirmSelect();
+           
         }
-        Debug.Log("selectModelIndex" + selectModelIndex);
+        //Debug.Log("selectModelIndex" + selectModelIndex);
     }
-
+    void confirmSelect()
+    {
+        selectObject = models[selectModelIndex];
+        selectObject.transform.position = selectPositionNode.position;
+        gameState = GameState.DECIDE_SCALE;
+        showHint();
+        Destroy(sortUI.transform.GetChild(selectModelIndex).gameObject);
+    }
     void decideScale()
     {
         scaleCounter += Time.deltaTime * SCALE_RATIO;
@@ -172,7 +185,7 @@ public class GameManager : MonoBehaviour
             }
             else if (Input.GetKeyDown(item.key))
             {
-                //TODO 做動畫 從中間飛到那個地方
+
                 setSelectObjectTransform(item.key, item.trans);
             }
         }
@@ -307,7 +320,7 @@ public class GameManager : MonoBehaviour
                 item.trans.GetChild(0).SetParent(pumpkin.transform);
             }
         }
-        startNode.SetActive(false);
+        sortUI.SetActive(false);
         endText.enabled = true;
         gameState = GameState.FINISH;
     }
