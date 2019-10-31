@@ -45,20 +45,25 @@ public class GameManager : MonoBehaviour
     public Transform mainCameraTrans;
     public Transform[] pumpkinTrans;
     public AudioClip upSound, downSound, confirmSound, finishSound;
+    public Text cameraText;
     string[] hints = {
         "上下選擇你的模型\n空白鍵確定",
         "依序設定長寬高的尺寸\n空白鍵確定\n方向鍵切換鏡頭方向",
         "方向鍵選擇要從哪個方向插入\n空白鍵確定",
         "方向鍵調整你要插入的位置\n空白鍵確定",
         "第一次空白鍵開始插入\n第二次空白鍵停止\n方向鍵切換鏡頭方向",
-        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束、R重來、B回首頁\n否則會持續到模型全用完為止",
-        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束、R重來、B回首頁"
+        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束，R重來，B回首頁\n否則會持續到模型全用完為止",
+        "做得好，南瓜君覺得舒服\n若覺得你的作品完成了\n可以隨時按ESC結束，R重來，B回首頁"
     };
-    string rule = "插入各種模型來幫南瓜挖洞\n製作你的南瓜燈";//TODO
     string[] levels =
     {
         "選擇模型","設定尺寸","選擇插入方向","調整位置","插入階段"
     };
+    string[] cameraDirection =
+    {
+        "正面","左側面","右側面","上面","背面"
+    };
+    float originScale;
     public static bool isCubeMode = true;
     // Start is called before the first frame update
     void Start()
@@ -111,10 +116,10 @@ public class GameManager : MonoBehaviour
         sortUI.transform.GetChild(0).GetComponent<Animation>().Play();
         decideScaleCounter = 0;
         placeModelCounter = 0;
-        scaleCounter = START_SCALE;
         waitingCounter = 0.0f;
         isWating = false;
         selectObjectRotation = Vector3.zero;
+        cameraText.text = "";
         showHint();
         if (models.Length == 1)
         {
@@ -186,6 +191,8 @@ public class GameManager : MonoBehaviour
             selectObject = models[selectModelIndex];
             selectObject.transform.position = selectPositionNode.position;
         }
+        scaleCounter = selectObject.transform.localScale.x;
+        originScale = selectObject.transform.localScale.x;
         gameState = GameState.DECIDE_SCALE;
         setCamera(cameraTrans[2]);
         showHint();
@@ -194,7 +201,7 @@ public class GameManager : MonoBehaviour
     void decideScale()
     {
         scaleCounter += Time.deltaTime * SCALE_RATIO;
-        if(scaleCounter > SCALE_LIMIT || scaleCounter < -SCALE_LIMIT)
+        if(scaleCounter > SCALE_LIMIT * originScale || scaleCounter < -SCALE_LIMIT * originScale)
         {
             SCALE_RATIO *= -1;
         }
@@ -207,8 +214,10 @@ public class GameManager : MonoBehaviour
 
         if (Input.GetKeyDown(CONFIRM_KEY))
         {
-            scaleCounter = START_SCALE;
+            //scaleCounter = START_SCALE;//TODO
             decideScaleCounter++;
+            scaleCounter = (decideScaleCounter == 1) ? selectObject.transform.localScale.y : selectObject.transform.localScale.z;
+            originScale = scaleCounter;
             audioSource.PlayOneShot(confirmSound);
             if (decideScaleCounter == 3)
             {
@@ -225,18 +234,22 @@ public class GameManager : MonoBehaviour
         else if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
             setCamera(cameraTrans[1]);
+            cameraText.text = cameraDirection[2];
         }
         else if (Input.GetKeyDown(KeyCode.RightArrow))
         {
             setCamera(cameraTrans[0]);
+            cameraText.text = cameraDirection[1];
         }
         else if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             setCamera(cameraTrans[3]);
+            cameraText.text = cameraDirection[3];
         }
         else if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            setCamera(cameraTrans[2]); 
+            setCamera(cameraTrans[2]);
+            cameraText.text = cameraDirection[0];
         }
     }
     void decideDirection()
@@ -330,18 +343,22 @@ public class GameManager : MonoBehaviour
             else if (Input.GetKeyDown(KeyCode.RightArrow))
             {
                 setCamera(pumpkinTrans[1]);
+                cameraText.text = cameraDirection[1];
             }
             else if (Input.GetKeyDown(KeyCode.LeftArrow))
             {
                 setCamera(pumpkinTrans[2]);
+                cameraText.text = cameraDirection[2];
             }
             else if (Input.GetKeyDown(KeyCode.UpArrow))
             {
                 setCamera(mainCameraTrans);
+                cameraText.text = cameraDirection[0];
             }
             else if (Input.GetKeyDown(KeyCode.DownArrow))
             {
                 setCamera(pumpkinTrans[0]);
+                cameraText.text = cameraDirection[4];
             }
             if (placeModelCounter == 1)
             {
@@ -411,6 +428,7 @@ public class GameManager : MonoBehaviour
         startNode.SetActive(false);
         hintText.enabled = false;
         endText.enabled = true;
+        cameraText.enabled = false;
         gameState = GameState.FINISH;
     }
 
